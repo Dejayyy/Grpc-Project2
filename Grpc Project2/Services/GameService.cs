@@ -14,7 +14,7 @@ namespace WordleGameServer.Services
         //public GameService(DailyWord.DailyWordleClient wordClient)
         //{
         //    client = wordleClient;
-        //}
+        //} 
 
         public override Task Play(IAsyncStreamReader<GuessRequest> requestStream, IServerStreamWriter<GuessResponse> responseStream, ServerCallContext context)
         {
