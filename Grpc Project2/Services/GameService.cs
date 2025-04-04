@@ -1,4 +1,8 @@
-﻿using Grpc.Core;
+﻿// William Mouhtouris and Ayden Nicholson
+// Project 2 - Wordle
+// 04-04-2025
+
+using Grpc.Core;
 using System.Text.Json;
 using WordleGameServer.Protos;
 using WordServer.Protos;
@@ -16,6 +20,7 @@ namespace WordleGameServer.Services
             _wordClient = wordClient;
         }
 
+        // Gets the word
         public async Task<string> GetDailyWord()
         {
             try
@@ -31,6 +36,7 @@ namespace WordleGameServer.Services
             }
         }
 
+        // Handles core game, play function via proto
         public override async Task Play(IAsyncStreamReader<GameRequest> requestStream, IServerStreamWriter<GameResponse> responseStream, ServerCallContext context)
         {
             string dailyWord = await GetDailyWord();
@@ -128,6 +134,7 @@ namespace WordleGameServer.Services
             });
         }
 
+        // Gets the stats using the proto
         public override Task<StatsResponse> GetStats(StatsRequest request, ServerCallContext context)
         {
             StatsMutex.WaitOne();

@@ -1,4 +1,8 @@
-﻿using Grpc.Core;
+﻿// William Mouhtouris and Ayden Nicholson
+// Project 2 - Wordle
+// 04-04-2025
+
+using Grpc.Core;
 using Grpc.Net.Client;
 using WordleGameServer.Protos;
 
@@ -98,6 +102,7 @@ namespace WordleGameClient
             }
         }
 
+        // Displays the start menu to the user
         public static void DisplayStart()
         {
             Console.WriteLine("+--------------------------------------+");
@@ -114,6 +119,7 @@ namespace WordleGameClient
             Console.WriteLine("Available: a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z\n");
         }
 
+        // Displays the stats at the end of the game
         public static async Task DisplayStats(DailyWordle.DailyWordleClient client)
         {
             try

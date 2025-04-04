@@ -1,4 +1,8 @@
-﻿using Grpc.Net.Client;
+﻿// William Mouhtouris and Ayden Nicholson
+// Project 2 - Wordle
+// 04-04-2025
+
+using Grpc.Net.Client;
 using WordServer.Protos;
 
 namespace WordleGameServer.Clients
@@ -7,6 +11,7 @@ namespace WordleGameServer.Clients
     {
         private static DailyWord.DailyWordClient? _client = null;
 
+        // gets the word
         public static string GetWord(string word)
         {
             ConnectToService();
@@ -14,6 +19,7 @@ namespace WordleGameServer.Clients
             return resp?.Word ?? "";
         }
 
+        // connects to the grpc
         private static void ConnectToService()
         {
             if (_client is null)
