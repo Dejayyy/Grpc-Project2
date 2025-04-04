@@ -1,6 +1,7 @@
 ﻿using WordServer.Protos;
 using Grpc.Core;
 using System;
+using Newtonsoft.Json;
 
 namespace WordServer.Services
 {
@@ -12,7 +13,7 @@ namespace WordServer.Services
 
         public WordService()
         {
-            _words = new(File.ReadAllLines(_jsonFilePath));
+            _words = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(_jsonFilePath));
 
             var random = new Random();
             int index = random.Next(_words.Count);

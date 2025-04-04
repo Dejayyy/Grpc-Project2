@@ -8,7 +8,7 @@ builder.Services.AddGrpc();
 
 builder.Services.AddGrpcClient<DailyWord.DailyWordClient>(o =>
 {
-    o.Address = new Uri("https://localhost:7206");
+    o.Address = new Uri("https://localhost:7227");
 });
 
 var app = builder.Build();

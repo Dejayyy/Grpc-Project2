@@ -11,14 +11,14 @@ namespace WordleGameServer.Clients
         {
             ConnectToService();
             WordResponse? resp = _client?.GetWord(new WordRequest { Word = word });
-            return resp?.Word ?? string.Empty;
+            return resp?.Word ?? "";
         }
 
         private static void ConnectToService()
         {
             if (_client is null)
             {
-                var channel = GrpcChannel.ForAddress("https://localhost:7206");
+                var channel = GrpcChannel.ForAddress("https://localhost:7227");
                 _client = new DailyWord.DailyWordClient(channel);
             }
         }

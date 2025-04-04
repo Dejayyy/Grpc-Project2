@@ -3,26 +3,26 @@ syntax = "proto3";
 option csharp_namespace = "WordleGameServer.Protos";
 
 service DailyWordle {
-	rpc Play (stream GuessRequest) returns (stream GuessResponse);
-	rpc GetStats (Empty) returns (GameStats);
+	rpc Play (stream GameRequest) returns (stream GameResponse);
+	rpc GetStats (StatsRequest) returns (StatsResponse);
 }
 
-message Empty {}
-
-message GuessRequest {
-	string word = 1;
+message GameRequest
+{
+	string guess = 1;
 }
 
-message GuessResponse {
-	string reply = 1;
-	bool is_correct = 2;
-	bool game_over = 3;
-	repeated string unused_letters = 4;
+message GameResponse
+{
+	string message = 1;
+	string todays_word = 2;
 }
 
-message GameStats {
-	int32 totalGames = 1;
-	int32 gamesWon = 2;
-	int32 gamesLost = 3;
-	double averageTurns = 4;
+message StatsRequest {}
+
+message StatsResponse
+{
+	int32 player_count = 1;
+	int32 winner_percent = 2;
+	double average_guesses = 3;
 }

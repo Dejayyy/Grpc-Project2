@@ -31,10 +31,9 @@ namespace WordleGameServer.Services
             }
         }
 
-        public override async Task Play(IAsyncStreamReader<GuessRequest> requestStream, IServerStreamWriter<GuessResponse> responseStream, ServerCallContext context)
+        public override async Task Play(IAsyncStreamReader<GameRequest> requestStream, IServerStreamWriter<GameResponse> responseStream, ServerCallContext context)
         {
             string dailyWord = await GetDailyWord();
-            int turnsUsed = 0;
             bool gameWon = false;
 
             // letter handling
@@ -42,162 +41,76 @@ namespace WordleGameServer.Services
             HashSet<char> includedLetters = new();
             HashSet<char> excludedLetters = new();
 
-            // create dictionary to see if theres a match
             Dictionary<char, int> matches = new();
 
-            foreach (char c in "abcdefghijklmnopqrstuvwxyz")
-                matches[c] = 0;
+            await responseStream.WriteAsync(new GameResponse { TodaysWord = dailyWord });
 
-            await foreach (var request in requestStream.ReadAllAsync())
+            while (await requestStream.MoveNext())
             {
-                // if game is over, break, else increase turns
-                if (turnsUsed >= 6 || gameWon) break;
-                turnsUsed++;
+                string guess = requestStream.Current.Guess.Trim();
+                Console.WriteLine("STUB: Guess is: " + guess);
+                Console.WriteLine("STUB: Word is: " + dailyWord);
 
-                string guess = request.Word.ToLower();
+                // validate - make sure its a valid wordle word
+                var validation = await _wordClient.ValidateWordAsync(new WordToValidate { Word = guess.ToLower() });
 
-                // validate
-                bool isValid = (await _wordClient.ValidateWordAsync(new WordToValidate { Word = guess })).IsValid;
-
-                if (!isValid)
+                if (!validation.IsValid)
                 {
-                    await responseStream.WriteAsync(new GuessResponse
-                    {
-                        Reply = "Invalid word",
-                        GameOver = false
-                    });
-                    continue;
+                    string invalidMessage = "INVALID";
+                    await responseStream.WriteAsync(new GameResponse { Message = invalidMessage });
+                    continue; 
                 }
 
-                // process
+                // build out the result
                 char[] results = new char[5];
                 for (int i = 0; i < 5; i++) results[i] = 'x';
 
-                // check for correct
+                // check for correct placements
                 for (int i = 0; i < 5; i++)
                 {
                     if (guess[i] == dailyWord[i])
                     {
                         results[i] = '*';
-                        matches[guess[i]]++;
+                        matches[guess[i]] = matches.GetValueOrDefault(guess[i], 0) + 1;
                         includedLetters.Add(guess[i]);
                     }
                 }
 
-                // check for misplaced
-                for (int i = 0; i < 5; i++)
+                // check for misplaced letters
+                for (int i = 0; i  < 5; i++)
                 {
                     if (guess[i] != dailyWord[i] && dailyWord.Contains(guess[i]))
                     {
-                        if (matches[guess[i]] < dailyWord.Count(c => c == guess[i]))
+                        int currentMatchCount = matches.GetValueOrDefault(guess[i], 0);
+                        int totalCountInWord = dailyWord.Count(c => c == guess[i]);
+
+                        if (currentMatchCount < totalCountInWord)
                         {
                             results[i] = '?';
-                            matches[guess[i]]++;
+                            matches[guess[i]] = currentMatchCount + 1;
                             includedLetters.Add(guess[i]);
                         }
                     }
                 }
 
-                // remove excluded
+                // remove letters not in word
                 foreach (char c in guess)
                 {
                     if (!dailyWord.Contains(c)) excludedLetters.Add(c);
                     unusedLetters.Remove(c);
                 }
 
-                // if all stars, game won
+                // if all stars, then the game is won
                 gameWon = results.All(c => c == '*');
-                bool gameOver = gameWon || turnsUsed == 6;
 
-                // update stats
-                await responseStream.WriteAsync(new GuessResponse
-                {
-                    Reply = new string(results),
-                    IsCorrect = gameWon,
-                    GameOver = gameOver,
-                    UnusedLetters = { unusedLetters.Select(c => c.ToString()) }
-                });
+                string resultMessage = $"     {new string(results)}\n\n" +
+                                       $"     Included: {string.Join(",", includedLetters)}\n" +
+                                       $"     Available: {string.Join(",", unusedLetters)}\n" +
+                                       $"     Excluded: {string.Join(",", excludedLetters)}\n";
 
-                if (gameOver) UpdateStats(gameWon, turnsUsed);
+                // send to response stream
+                await responseStream.WriteAsync(new GameResponse { Message = resultMessage });
             }
-        }
-
-        public override Task<GameStats> GetStats(Protos.Empty request, ServerCallContext context)
-        {
-            StatsMutex.WaitOne();
-
-            try
-            {
-                if (!File.Exists(StatsFilePath))
-                {
-                    return Task.FromResult(new GameStats
-                    {
-                        TotalGames = 0,
-                        GamesWon = 0,
-                        GamesLost = 0,
-                        AverageTurns = 0
-                    });
-                }
-
-                // handle json
-                var json = File.ReadAllText(StatsFilePath);
-                var stats = JsonSerializer.Deserialize<Stats>(json) ?? new Stats();
-
-                // calculate average turns
-                double avgTurns = stats.TotalGames > 0 ? (double)stats.TotalTurns / stats.TotalGames : 0;
-
-                return Task.FromResult(new GameStats {
-                    TotalGames = stats.TotalGames,
-                    GamesWon = stats.GamesWon,
-                    GamesLost = stats.GamesLost,
-                    AverageTurns = avgTurns
-                });
-            }
-            finally
-            { 
-                StatsMutex.ReleaseMutex(); 
-            }
-        }
-
-        private void UpdateStats(bool won, int turnsUsed)
-        {
-            StatsMutex.WaitOne();
-            try
-            {
-                Stats stats;
-                if (File.Exists(StatsFilePath))
-                {
-                    var json = File.ReadAllText(StatsFilePath);
-                    stats = JsonSerializer.Deserialize<Stats>(json) ?? new Stats();
-                }
-                else
-                {
-                    stats = new Stats();
-                }
-
-                stats.TotalGames++;
-                if (won)
-                    stats.GamesWon++;
-                else
-                    stats.GamesLost++;
-
-                stats.TotalTurns += turnsUsed;
-
-                var updatedJson = JsonSerializer.Serialize(stats, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(StatsFilePath, updatedJson);
-            }
-            finally
-            {
-                StatsMutex.ReleaseMutex();
-            }
-        }
-
-        private class Stats
-        {
-            public int TotalGames { get; set; } = 0;
-            public int GamesWon { get; set; } = 0;
-            public int GamesLost { get; set; } = 0;
-            public int TotalTurns { get; set; } = 0;
         }
     }
 }

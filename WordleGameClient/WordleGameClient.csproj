@@ -13,10 +13,6 @@
     <PackageReference Include="Grpc.Net.Client" Version="2.70.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Grpc Project2\WordleGameServer.csproj" />
-  </ItemGroup>
-
 	<ItemGroup>
 		<Protobuf Include="..\Grpc Project2\Protos\wordle.proto" GrpcServices="Client" />
 	</ItemGroup>
