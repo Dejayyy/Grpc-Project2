@@ -35,6 +35,7 @@ namespace WordleGameServer.Services
         {
             string dailyWord = await GetDailyWord();
             bool gameWon = false;
+            int guesses = 0;
 
             // letter handling
             HashSet<char> unusedLetters = new("abcdefghijklmnopqrstuvwxyz");
@@ -43,14 +44,15 @@ namespace WordleGameServer.Services
 
             Dictionary<char, int> matches = new();
 
+            // Add a player
+            UpdateStats(stats => stats.PlayerCount++);
+
             await responseStream.WriteAsync(new GameResponse { TodaysWord = dailyWord });
 
             while (await requestStream.MoveNext())
             {
                 string guess = requestStream.Current.Guess.Trim();
-                Console.WriteLine("STUB: Guess is: " + guess);
-                Console.WriteLine("STUB: Word is: " + dailyWord);
-
+                
                 // validate - make sure its a valid wordle word
                 var validation = await _wordClient.ValidateWordAsync(new WordToValidate { Word = guess.ToLower() });
 
@@ -60,6 +62,9 @@ namespace WordleGameServer.Services
                     await responseStream.WriteAsync(new GameResponse { Message = invalidMessage });
                     continue; 
                 }
+
+                // guess is valid, increment
+                guesses++;
 
                 // build out the result
                 char[] results = new char[5];
@@ -110,7 +115,87 @@ namespace WordleGameServer.Services
 
                 // send to response stream
                 await responseStream.WriteAsync(new GameResponse { Message = resultMessage });
+
+                if (gameWon) break;
             }
+
+            UpdateStats(stats => {
+                stats.GuessesMade += guesses;
+                if (gameWon)
+                    stats.GamesWon++;
+                else
+                    stats.GamesLost++;
+            });
+        }
+
+        public override Task<StatsResponse> GetStats(StatsRequest request, ServerCallContext context)
+        {
+            StatsMutex.WaitOne();
+
+            // try-finally for mutex handling
+            try
+            {
+                // get the stats
+                if (File.Exists(StatsFilePath))
+                {
+                    var json = File.ReadAllText(StatsFilePath);
+                    var stats = JsonSerializer.Deserialize<BlankStats>(json);
+
+                    if (stats != null)
+                    {
+                        return Task.FromResult(new StatsResponse
+                        {
+                            PlayerCount = stats.PlayerCount,
+                            GamesWon = stats.GamesWon,
+                            GamesLost = stats.GamesLost,
+                            GuessesMade = stats.GuessesMade
+                        });
+                    }
+                }
+            }
+            finally
+            {
+                StatsMutex.ReleaseMutex(); 
+            }
+
+            return Task.FromResult(new StatsResponse());
+        }
+
+        private void UpdateStats(Action<BlankStats> update)
+        {
+            StatsMutex.WaitOne();
+
+            // try-finally
+            try
+            {
+                BlankStats stats;
+                if (File.Exists(StatsFilePath))
+                {
+                    var json = File.ReadAllText(StatsFilePath);
+                    stats = JsonSerializer.Deserialize<BlankStats>(json) ?? new BlankStats();
+                }
+                else
+                {
+                    stats = new BlankStats();
+                }
+
+                update(stats);
+
+                var updatedJson = JsonSerializer.Serialize(stats);
+                File.WriteAllText(StatsFilePath, updatedJson);
+            }
+            finally
+            {
+                StatsMutex.ReleaseMutex();
+            }
+        }
+
+        public class BlankStats
+        {
+            public int PlayerCount { get; set; } = 0;
+            public int GamesWon { get; set; } = 0;
+            public int GamesLost { get; set; } = 0;
+            public int GuessesMade { get; set; } = 0;
         }
     }
 }

@@ -43,7 +43,7 @@ namespace WordleGameClient
 
                         if (string.IsNullOrWhiteSpace(guess) || guess.Length != 5)
                         {
-                            Console.WriteLine("\tInvalid Word, try again");
+                            Console.WriteLine("     Invalid Word, try again\n");
                             continue;
                         }
 
@@ -60,7 +60,7 @@ namespace WordleGameClient
 
                         if (response.Message == "INVALID")
                         {
-                            Console.WriteLine("\tInvalid Word, try again\n");
+                            Console.WriteLine("     Invalid Word, try again\n");
                             continue;
                         }
                         else
@@ -70,7 +70,8 @@ namespace WordleGameClient
 
                         if (guess.ToLower() == dailyWord.ToLower())
                         {
-                            Console.WriteLine("\nYou win!");
+                            Console.WriteLine("You win!\n");
+                            await DisplayStats(client);
                             return;
                         }
                     }
@@ -99,9 +100,10 @@ namespace WordleGameClient
 
         public static void DisplayStart()
         {
-            Console.WriteLine("+--------+");
-            Console.WriteLine("| WORDLE |");
-            Console.WriteLine("+--------+\n");
+            Console.WriteLine("+--------------------------------------+");
+            Console.WriteLine("|                WORDLE                |");
+            Console.WriteLine("| Ayden Nicholson & William Mouhtouris |");
+            Console.WriteLine("+--------------------------------------+\n");
             Console.WriteLine("You have 6 chances to guess a 5-letter word");
             Console.WriteLine("Each guess must be a 'playable 5-letter word");
             Console.WriteLine("After a guess the game will display a series of");
@@ -110,6 +112,31 @@ namespace WordleGameClient
             Console.WriteLine("? - means the letter should be in another spot");
             Console.WriteLine("* - means the letter is correct in this spot\n");
             Console.WriteLine("Available: a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z\n");
+        }
+
+        public static async Task DisplayStats(DailyWordle.DailyWordleClient client)
+        {
+            try
+            {
+                var response = await client.GetStatsAsync(new StatsRequest());
+
+                Console.WriteLine("Statistics");
+                Console.WriteLine("----------");
+                Console.WriteLine($"Players: \t\t{response.PlayerCount}");
+
+                // winners
+                int games = response.GamesWon + response.GamesLost;
+                double winPercent = games > 0 ? (double)response.GamesWon / games * 100 : 0;
+                Console.WriteLine($"Winners: \t\t{winPercent:F1}%");
+
+                // average guesses
+                double avgGuesses = response.PlayerCount > 0 ? (double)response.GuessesMade / response.PlayerCount : 0;
+                Console.WriteLine($"Average Guesses: \t{avgGuesses:F1}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to fetch stats: {ex.Message}");
+            }
         }
     }
 }

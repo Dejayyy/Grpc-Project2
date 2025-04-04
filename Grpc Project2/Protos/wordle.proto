@@ -23,6 +23,7 @@ message StatsRequest {}
 message StatsResponse
 {
 	int32 player_count = 1;
-	int32 winner_percent = 2;
-	double average_guesses = 3;
+	int32 games_won = 2;
+	int32 games_lost = 3;
+	int32 guesses_made = 4;
 }

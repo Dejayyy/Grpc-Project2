@@ -7,9 +7,9 @@ namespace WordServer.Services
 {
     public class WordService : DailyWord.DailyWordBase
     {
-        private string _jsonFilePath = "Wordle.json";
-        private List<string> _words = new();
-        private string _todaysWord;
+        private readonly string _jsonFilePath = "Wordle.json";
+        private readonly List<string> _words = new();
+        private readonly string _todaysWord;
 
         public WordService()
         {
