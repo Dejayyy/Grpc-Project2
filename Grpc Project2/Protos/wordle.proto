@@ -21,7 +21,8 @@ message GuessResponse {
 }
 
 message GameStats {
-	int32 players = 1;
-	int32 winners = 2;
-	map<int32, int32> guesses = 3;
+	int32 totalGames = 1;
+	int32 gamesWon = 2;
+	int32 gamesLost = 3;
+	double averageTurns = 4;
 }

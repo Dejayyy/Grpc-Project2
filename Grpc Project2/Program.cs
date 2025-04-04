@@ -1,10 +1,15 @@
-using Grpc_Project2.Services;
+using WordServer.Protos;
 using WordleGameServer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddGrpc();
+
+builder.Services.AddGrpcClient<DailyWord.DailyWordClient>(o =>
+{
+    o.Address = new Uri("https://localhost:7206");
+});
 
 var app = builder.Build();
 

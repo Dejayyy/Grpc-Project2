@@ -1,40 +1,32 @@
 ﻿using WordServer.Protos;
 using Grpc.Core;
-using Newtonsoft.Json;
-using System.Runtime.CompilerServices;
+using System;
 
 namespace WordServer.Services
 {
     public class WordService : DailyWord.DailyWordBase
     {
-        private string JsonFilePath = "Wordle.json";
-        private List<string> Words = new();
-        private Dictionary<DateTime, string> WordPairs = new();
+        private string _jsonFilePath = "Wordle.json";
+        private List<string> _words = new();
+        private string _todaysWord;
 
         public WordService()
         {
-            if (File.Exists(JsonFilePath))
-            {
-                Words = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(JsonFilePath));
-            }
+            _words = new(File.ReadAllLines(_jsonFilePath));
+
+            var random = new Random();
+            int index = random.Next(_words.Count);
+            _todaysWord = _words[index].Trim().ToLower();
         }
 
-        public override Task<WordResponse> GetWord(Empty request, ServerCallContext context)
+        public override Task<WordResponse> GetWord(WordRequest request, ServerCallContext context)
         {
-            DateTime today = DateTime.UtcNow.Date;
-
-            if (!WordPairs.ContainsKey(today))
-            {
-                var random = new Random();
-                WordPairs[today] = Words[random.Next(Words.Count)];
-            }
-
-            return Task.FromResult(new WordResponse { Word = WordPairs[today] } );
+            return Task.FromResult(new WordResponse { Word = _todaysWord });
         }
 
-        public override Task<ValidationResponse> ValidateWord(WordRequest request,  ServerCallContext context)
+        public override Task<ValidationResponse> ValidateWord(WordToValidate request,  ServerCallContext context)
         {
-            bool isValid = Words.Contains(request.Word.ToUpper());
+            bool isValid = _words.Contains(request.Word.ToLower());
             return Task.FromResult(new ValidationResponse { IsValid = isValid } );
         }
     }
